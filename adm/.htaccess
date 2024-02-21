@@ -1,0 +1,16 @@
+# Documentação: https//httpd.apache.org/docs/2.4/rewrite/flags.html
+
+RewriteEngine On
+
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-l
+
+RewriteRule ^(.+)$ index.php?url=$1 [QSA,L]
+
+
+ErrorDocument 403 https://celke.com.br
+
+# bloquear a opção listar osarquivos
+Options -Indexes
+
