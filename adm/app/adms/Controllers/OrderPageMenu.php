@@ -8,12 +8,12 @@ if (!defined('C8L6K7E')) {
 }
 
 /**
- * Controller da pagina alterar ordem do nivel de acesso
+ * Controller da pagina alterar ordem do item de menu
  * @author Cesar <cesar@celke.com.br>
  */
 class OrderPageMenu
 {
-    /** @var int|string|null $id Recebe o id do registro */
+    /** @var int|string|null $id Recebe o id */
     private int|string|null $id;
     /** @var int|string|null $level Recebe o nível de acesso */
     private int|string|null $level;
@@ -24,12 +24,13 @@ class OrderPageMenu
 
     public function index(int|string|null $id = null): void
     {
+        $this->id = (int) $id;
+        $this->level = filter_input(INPUT_GET, "level", FILTER_SANITIZE_NUMBER_INT);
         $this->pag = filter_input(INPUT_GET, "pag", FILTER_SANITIZE_NUMBER_INT);
-        var_dump($this->pag);
 
         if ((!empty($this->id)) and (!empty($this->level)) and (!empty($this->pag))) {
             $editOrderPageMenu = new \App\adms\Models\AdmsOrderPageMenu();
-            $editOrderPageMenu->editPermission($this->id);
+            $editOrderPageMenu->orderPageMenu($this->id);
 
             $urlRedirect = URL . "list-permission/index/{$this->pag}?level={$this->level}";
             header("Location: $urlRedirect");
