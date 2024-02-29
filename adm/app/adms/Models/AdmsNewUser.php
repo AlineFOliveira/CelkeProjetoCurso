@@ -2,7 +2,7 @@
 
 namespace App\adms\Models;
 
-if(!defined('C8L6K7E')){
+if (!defined('C8L6K7E')) {
     header("Location: /");
     /* die('Erro: página não encontrada'); */
 }
@@ -10,8 +10,8 @@ if(!defined('C8L6K7E')){
 class AdmsNewUser
 {
     private array|null $data;
-    private $resultBd;
-    private $result;
+    private array|null $resultBd;
+    private bool $result;
     /** @var bool Recebe o email do remetente*/
     private bool $fromEmail;
 
@@ -35,10 +35,9 @@ class AdmsNewUser
 
         $valEmptyField = new \App\adms\Models\helper\AdmsValEmptyField();
         $valEmptyField->valField($this->data);
-        if ($valEmptyField->getResult()) { 
+        if ($valEmptyField->getResult()) {
             $this->valInput();
-           
-        }else{
+        } else {
             $_SESSION['msg'] = "<p>Erro: Usuário não cadastrado com sucesso!</p>";
             $this->result = false;
         }
@@ -46,7 +45,7 @@ class AdmsNewUser
 
     private function valInput(): void
     {
-        $valEmail = new \App\adms\Models\helper\AdmsValEmail();// Tá chamando o helper de validar email
+        $valEmail = new \App\adms\Models\helper\AdmsValEmail(); // Tá chamando o helper de validar email
         $valEmail->validateEmail($this->data['email']);
 
         $valEmailSingle = new \App\adms\Models\helper\AdmsValEmailSingle();
@@ -58,50 +57,68 @@ class AdmsNewUser
         $valUserSingleLogin = new \App\adms\Models\helper\AdmsValUserSingleLogin();
         $valUserSingleLogin->validateUserSingleLogin($this->data['email']);
 
-        if(($valEmail->getResult()) and ($valEmailSingle->getResult()) and ($valPassword->getResult()) and ($valUserSingleLogin->getResult())){//se é true
+        if (($valEmail->getResult()) and ($valEmailSingle->getResult()) and ($valPassword->getResult()) and ($valUserSingleLogin->getResult())) { //se é true
             $this->add();
-        }else{
+        } else {
             $this->result = false;
         }
     }
 
     private function add(): void
     {
-        $this->data['password'] = password_hash($this->data['password'], PASSWORD_DEFAULT);
+        if ($this->accessLevel()) {
+            $this->data['password'] = password_hash($this->data['password'], PASSWORD_DEFAULT);
             $this->data['user'] = $this->data['email'];
-            $this->data['conf_email'] = password_hash($this->data['password'] . date("Y-m-d H:i:s"), PASSWORD_DEFAULT); 
+            $this->data['conf_email'] = password_hash($this->data['password'] . date("Y-m-d H:i:s"), PASSWORD_DEFAULT);
             $this->data['created'] = date("Y-m-d H:i:s");
             //var_dump($this->data);
 
             $createUser = new \App\adms\Models\helper\AdmsCreate();
-            $createUser->exeCreate("adms_users", $this->data);//nome da tabela e os dados
+            $createUser->exeCreate("adms_users", $this->data); //nome da tabela e os dados
 
-            if($createUser->getResult()){
+            if ($createUser->getResult()) {
                 //$_SESSION['msg'] = "<p style='color:green;'>Usuário cadastrado com sucesso!";
                 //$this->result = true;
                 $this->sendEmail();
-            }else{
+            } else {
                 $_SESSION['msg'] = "<p style='color:#f00;'>Erro: Usuário não cadastrado com sucesso!</p>";
                 $this->result = false;
             }
+        } else {
+            $_SESSION['msg'] = "<p style='color:#f00;'>Erro: Usuário não cadastrado com sucesso!</p>";
+            $this->result = false;
+        }
     }
 
-    private function sendEmail():void
+    private function accessLevel(): bool
+    {
+        $viewAccessLevel = new \App\adms\Models\helper\AdmsRead();
+        $viewAccessLevel->fullRead("SELECT adms_access_level_id, adms_sits_user_id FROM adms_levels_form ORDER BY id ASC LIMIT :limit", "limit=1");
+        $this->resultBd = $viewAccessLevel->getResult();
+        if ($this->resultBd) {
+            $this->data['adms_access_level_id'] = $this->resultBd[0]['adms_access_level_id'];
+            $this->data['adms_sits_user_id'] = $this->resultBd[0]['adms_sits_user_id'];
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private function sendEmail(): void
     {
         $this->contentEmailHtml();
         $this->contentEmailText();
         $sendEmail = new \App\adms\Models\helper\AdmsSendEmail();
         $sendEmail->sendEmail($this->emailData, 2);
 
-        if($sendEmail->getResult()){
+        if ($sendEmail->getResult()) {
             $this->fromEmail = $sendEmail->getFromEmail();
             $_SESSION['msg'] = "<p style='color:green;'>Usuário cadastrado com sucesso. Acesse a sua caixa de email para confirmar o email!</p>";
             $this->result = true;
-        }else{
+        } else {
             $_SESSION['msg'] = "<p style='color:#f00;'>Usuário cadastrado com sucesso. Houve erro ao enviar o email de confirmação, entre em contato com {$this->fromEmail} para mais informações!!</p>";
             $this->result = true;
         }
-
     }
 
     private function contentEmailHtml(): void
@@ -127,9 +144,6 @@ class AdmsNewUser
         $this->emailData['contentText'] = "Prezado(a) {$this->firstName}\n\n";
         $this->emailData['contentText'] .= "Agradecemos a sua solicitação de cadastro em nosso site. \n\n";
         $this->emailData['contentText'] .= "Para que possamos liberar o seu cadastro em nosso sistema, solicitamos a confirmação do e-mail clicando no link abaixo: \n\n";
-        $this->emailData['contentText'] .= $this->url. "\n\n";
+        $this->emailData['contentText'] .= $this->url . "\n\n";
     }
-
-    
-    
 }
